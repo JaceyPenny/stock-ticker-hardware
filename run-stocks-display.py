@@ -8,7 +8,13 @@ from pprint import pprint
 from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 
 
+SPEED = 5 # varies from (0, inf), 1 is default speed
+BRIGHTNESS = 50
+
 def fetch_user_stocks(current_stocks):
+    global BRIGHTNESS
+    global SPEED
+    
     request_url = 'https://kvstore.p.mashape.com/collections/stocks/items/stocks'
     response = requests.get(request_url, headers={'X-Mashape-Key': 'WBbVx5C9awmshoHyMwmMPoMsV6rLp1U3PPBjsnccQVMLGQ9vp4'})
     body = response.json()
@@ -16,6 +22,14 @@ def fetch_user_stocks(current_stocks):
     stocks = stocks_string.split(',')
     stocks.sort()
     stocks_set = set(stocks)
+
+    request_url = 'https://kvstore.p.mashape.com/collections/stocks/items/brightness_speed'
+    response = requests.get(request_url, headers={'X-Mashape-Key': 'WBbVx5C9awmshoHyMwmMPoMsV6rLp1U3PPBjsnccQVMLGQ9vp4'})
+    body = response.json()
+    brightness_speed_string = body['value']
+    items = brightness_speed_string = brightness_speed_string.split(',')
+    BRIGHTNESS = int(items[0])
+    SPEED = float(items[1])
 
     stock_dict = {}
     for s in current_stocks:
@@ -93,10 +107,13 @@ class StockRow(object):
         self.description = []
         for i, s in enumerate(self.stocks):
             self.description += attributed_chars(s.symbol + ' ', 0)
-            if s.change > 0:
-                self.description += attributed_chars("${:.2f} ▲{:.2f}".format(s.value, s.change), 1)
+            if s.value == 0:
+                self.description += attributed_chars("$0, 0%", 1)
             else:
-                self.description += attributed_chars("${:.2f} ▼{:.2f}".format(s.value, s.change * -1), -1)
+                if s.change > 0:
+                    self.description += attributed_chars("${:.2f} ▲{:.2f}%".format(s.value, round(s.change / s.value * 100, 2)), 1)
+                else:
+                    self.description += attributed_chars("${:.2f} ▼{:.2f}%".format(s.value, round(s.change / s.value * -100, 2)), -1)
 
             if i < len(self.stocks) - 1:
                 self.description += attributed_chars("   ", 0)
@@ -115,7 +132,7 @@ class MatrixHandler(object):
         self.options.row_address_type = 0 
         self.options.multiplexing = 0
         self.options.pwm_bits = 11
-        self.options.brightness = 50
+        self.options.brightness = BRIGHTNESS
         self.options.pwm_lsb_nanoseconds = 130
         self.options.led_rgb_sequence = "RGB"
 
@@ -170,7 +187,7 @@ class MatrixHandler(object):
             else:
                 length += graphics.DrawText(canvas, font, x_pos + length, y_pos, text_color, character)
         return length
-        
+
     def refresh_value(self):
         refresh_stock_values(self.rows, self.stocks)
         
@@ -192,7 +209,7 @@ class MatrixHandler(object):
 
     def run(self):
         canvas = self.matrix.CreateFrameCanvas()
-        
+        print(dir(canvas))
         font = graphics.Font()
         font.LoadFont("assets/boxxy.bdf")
         text_color = graphics.Color(255, 255, 255)
@@ -206,9 +223,10 @@ class MatrixHandler(object):
         fetch_value = False
 
         while True:
+            canvas.brightness = BRIGHTNESS
             refetch_counter += 1
             
-            if refetch_counter == 60:
+            if refetch_counter >= 60 * SPEED:
                 if fetch_value:
                     self.trigger_value_refresh()
                 else:
@@ -234,7 +252,7 @@ class MatrixHandler(object):
                 if (row.position + length < 0):
                     row.position = spacing - 2
 
-            time.sleep(0.08)
+            time.sleep(0.08 / SPEED)
             canvas = self.matrix.SwapOnVSync(canvas)
 
 
@@ -246,4 +264,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Exiting...\n")
         sys.exit(0)
-
