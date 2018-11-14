@@ -111,9 +111,9 @@ class StockRow(object):
                 self.description += attributed_chars("$0, 0%", 1)
             else:
                 if s.change > 0:
-                    self.description += attributed_chars("${:.2f} ▲{:.2f}%".format(s.value, round(s.change / s.value * 100, 2)), 1)
+                    self.description += attributed_chars("{:.2f} ▲{:.2f}%".format(s.value, round(s.change / s.value * 100, 2)), 1)
                 else:
-                    self.description += attributed_chars("${:.2f} ▼{:.2f}%".format(s.value, round(s.change / s.value * -100, 2)), -1)
+                    self.description += attributed_chars("{:.2f} ▼{:.2f}%".format(s.value, round(s.change / s.value * -100, 2)), -1)
 
             if i < len(self.stocks) - 1:
                 self.description += attributed_chars("   ", 0)
